@@ -1,0 +1,60 @@
+<template>
+    <lightning-card title="Integration Monitor" icon-name="standard:data_streams">
+        <div slot="actions" class="actions">
+            <lightning-input
+                type="toggle"
+                label="Failures only"
+                message-toggle-active=""
+                message-toggle-inactive=""
+                checked={failuresOnly}
+                onchange={handleFailuresToggle}
+            ></lightning-input>
+            <lightning-button-icon
+                icon-name="utility:refresh"
+                alternative-text="Refresh"
+                title="Refresh"
+                onclick={handleRefresh}
+            ></lightning-button-icon>
+        </div>
+
+        <div class="slds-p-horizontal_medium">
+            <template lwc:if={summary}>
+                <div class="stats slds-m-bottom_medium">
+                    <div class="stat">
+                        <p class="stat-label">Calls (24h)</p>
+                        <p class="stat-value">{summary.total}</p>
+                    </div>
+                    <div class="stat">
+                        <p class="stat-label">Failures</p>
+                        <p class="stat-value stat-bad">{summary.failures}</p>
+                    </div>
+                    <div class="stat">
+                        <p class="stat-label">Success rate</p>
+                        <p class="stat-value">{summary.successRate}%</p>
+                    </div>
+                    <div class="stat">
+                        <p class="stat-label">Avg duration</p>
+                        <p class="stat-value">{summary.averageDurationMs} ms</p>
+                    </div>
+                </div>
+            </template>
+
+            <template lwc:if={error}>
+                <div class="slds-text-color_error slds-m-bottom_small">{error}</div>
+            </template>
+
+            <template lwc:if={hasRows}>
+                <lightning-datatable
+                    key-field="Id"
+                    data={rows}
+                    columns={columns}
+                    hide-checkbox-column
+                    onrowaction={handleRowAction}
+                ></lightning-datatable>
+            </template>
+            <template lwc:else>
+                <p class="slds-text-color_weak slds-p-vertical_medium">No integration calls logged yet.</p>
+            </template>
+        </div>
+    </lightning-card>
+</template>
