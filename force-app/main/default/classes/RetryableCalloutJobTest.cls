@@ -21,10 +21,11 @@ private class RetryableCalloutJobTest {
     static void temporaryFailureSchedulesARetry() {
         Test.setMock(HttpCalloutMock.class, new IntegrationTestUtils.MockResponse(503, 'Service Unavailable'));
         HttpCalloutService.CalloutRequest request = invoiceRequest();
+        RetryableCalloutJob.retriesEnabled = false;
 
         new RetryableCalloutJob(request).execute(null);
 
-        Assert.areEqual(1, Limits.getQueueableJobs(), 'A retry job should be queued');
+        Assert.areEqual(1, RetryableCalloutJob.lastRetryDelayMinutes, 'The first retry should wait 1 minute');
         Assert.areEqual(2, request.attempt, 'The retry should be attempt 2');
     }
 
@@ -34,7 +35,7 @@ private class RetryableCalloutJobTest {
 
         new RetryableCalloutJob(invoiceRequest()).execute(null);
 
-        Assert.areEqual(0, Limits.getQueueableJobs(), 'A 404 must not be retried');
+        Assert.isNull(RetryableCalloutJob.lastRetryDelayMinutes, 'A 404 must not be retried');
     }
 
     @IsTest
@@ -45,7 +46,7 @@ private class RetryableCalloutJobTest {
 
         new RetryableCalloutJob(request).execute(null);
 
-        Assert.areEqual(0, Limits.getQueueableJobs(), 'No retry after the last attempt');
+        Assert.isNull(RetryableCalloutJob.lastRetryDelayMinutes, 'No retry after the last attempt');
     }
 
     @IsTest

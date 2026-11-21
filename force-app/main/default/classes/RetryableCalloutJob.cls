@@ -11,6 +11,13 @@ public with sharing class RetryableCalloutJob implements Queueable, Database.All
     public static final Integer MAX_ATTEMPTS = 3;
     private static final Integer MAX_DELAY_MINUTES = 10;
 
+    /** Apex tests cannot chain Queueable jobs, so tests switch this off and check lastRetryDelayMinutes. */
+    @TestVisible
+    private static Boolean retriesEnabled = true;
+
+    @TestVisible
+    private static Integer lastRetryDelayMinutes;
+
     private final HttpCalloutService.CalloutRequest request;
 
     public RetryableCalloutJob(HttpCalloutService.CalloutRequest request) {
@@ -22,8 +29,12 @@ public with sharing class RetryableCalloutJob implements Queueable, Database.All
         IntegrationLogger.flush();
 
         if (shouldRetry(result, request.attempt)) {
+            Integer delayMinutes = backoffMinutes(request.attempt);
             request.attempt++;
-            System.enqueueJob(new RetryableCalloutJob(request), backoffMinutes(request.attempt));
+            lastRetryDelayMinutes = delayMinutes;
+            if (retriesEnabled) {
+                System.enqueueJob(new RetryableCalloutJob(request), delayMinutes);
+            }
         }
     }
 

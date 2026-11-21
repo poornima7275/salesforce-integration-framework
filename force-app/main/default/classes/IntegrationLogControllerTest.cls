@@ -41,9 +41,12 @@ private class IntegrationLogControllerTest {
         Test.setMock(HttpCalloutMock.class, new IntegrationTestUtils.MockResponse(200, '{}'));
         Id logId = logFor('c-1').Id;
 
-        Test.startTest();
-        Id jobId = IntegrationLogController.retry(logId);
-        Test.stopTest();
+        Id jobId;
+        System.runAs(IntegrationTestUtils.createIntegrationUser()) {
+            Test.startTest();
+            jobId = IntegrationLogController.retry(logId);
+            Test.stopTest();
+        }
         Test.getEventBus().deliver();
 
         Assert.isNotNull(jobId, 'A job id should be returned');
@@ -53,9 +56,13 @@ private class IntegrationLogControllerTest {
 
     @IsTest
     static void inboundAndSuccessfulCallsCannotBeRetried() {
+        User integrationUser = IntegrationTestUtils.createIntegrationUser();
         for (String correlationId : new List<String>{ 'c-2', 'c-3' }) {
             try {
-                IntegrationLogController.retry(logFor(correlationId).Id);
+                Id logId = logFor(correlationId).Id;
+                System.runAs(integrationUser) {
+                    IntegrationLogController.retry(logId);
+                }
                 Assert.fail('An exception was expected for ' + correlationId);
             } catch (AuraHandledException e) {
                 Assert.isNotNull(e.getMessage(), 'A friendly message should be returned');
@@ -65,10 +72,15 @@ private class IntegrationLogControllerTest {
 
     @IsTest
     static void unknownLogIsReported() {
+        User integrationUser = IntegrationTestUtils.createIntegrationUser();
         Integration_Log__c log = logFor('c-1');
-        delete log;
+        System.runAs(new User(Id = UserInfo.getUserId())) {
+            delete log;
+        }
         try {
-            IntegrationLogController.retry(log.Id);
+            System.runAs(integrationUser) {
+                IntegrationLogController.retry(log.Id);
+            }
             Assert.fail('An exception was expected');
         } catch (AuraHandledException e) {
             Assert.areEqual('The log entry was not found.', e.getMessage(), 'The message should explain the problem');
